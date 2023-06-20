@@ -21,8 +21,10 @@ $updates = Get-WindowsUpdate -IsInstalled:$false
 if ($updates.Count -gt 0) {
     # Criar bucle
     # Caminho absoluto do script
-    $rutascript = "\\192.168.30.82\TEMP\autoupdate.ps1"
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript" -Value "powershell.exe -ExecutionPolicy Bypass -File $rutascript"
+
+    # $rutascript = "\\192.168.30.82\TEMP\autoupdate.ps1"
+    # Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript" -Value "powershell.exe -ExecutionPolicy Bypass -File $rutascript"
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript" -Value "powershell.exe -ExecutionPolicy Bypass -File '.\autoupdate.ps1'"
 
     # Atualizar
     Get-WindowsUpdate -AcceptAll -Install -Verbose -AutoReboot
