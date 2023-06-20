@@ -9,9 +9,10 @@ powercfg.exe /change hibernate-timeout-ac 0 ;
 
 # Modulos y dependencias WinUpdate
 ############################################################################
-Install-PackageProvider -Name NuGet -Force
+Install-PackageProvider -Name NuGet -Force -verbose
 Install-Module -Name PSWindowsUpdate -Force -Verbose
-Import-Module PSWindowsUpdate -Verbose;
+Import-Module PSWindowsUpdate
+Import-Module ScheduledTasks
 
 # Microsoft Update
 # Comprobar atualizaciones disponibles
@@ -20,11 +21,13 @@ $updates = Get-WindowsUpdate -IsInstalled:$false
 
 if ($updates.Count -gt 0) {
     # Criar bucle
-    # Caminho absoluto do script
+    #$rutaScript = "C:\work\start.bat"
 
-    # $rutascript = "\\192.168.30.82\TEMP\autoupdate.ps1"
-    # Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript" -Value "powershell.exe -ExecutionPolicy Bypass -File $rutascript"
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript" -Value "powershell.exe -ExecutionPolicy Bypass -File '.\autoupdate.ps1'"
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    # $User= "NT AUTHORITYSYSTEM" -User $User
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "C:\work\autoupdate.ps1""
+    # $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Settings $settings
+    Register-ScheduledTask -TaskName "autoupdater" -Trigger $trigger -Action $action -RunLevel Highest -Force
 
     # Atualizar
     Get-WindowsUpdate -AcceptAll -Install -Verbose -AutoReboot
@@ -35,9 +38,14 @@ if ($updates.Count -gt 0) {
 
 } else {
     # Nao hay atualizaciones disponibles
-    Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "updatescript"
     # Eliminar o lanzador do atualizador
-    Write-Host "Nao hai mais atualizaçoes" ;
+    
+    Write-Host "Nao hai mais atualizaçoes. Presione cualquier tecla para continuar..."
+    # Esperar a que el usuario presione una tecla
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
+    Unregister-ScheduledTask -TaskName "autoupdater" -Confirm:$false
+
     shutdown.exe /r /f /t 0
 }
 
