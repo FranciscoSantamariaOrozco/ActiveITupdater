@@ -20,33 +20,49 @@ Import-Module ScheduledTasks
 $updates = Get-WindowsUpdate -IsInstalled:$false
 
 if ($updates.Count -gt 0) {
-    # Criar bucle
-    #$rutaScript = "C:\work\start.bat"
-
-    $trigger = New-ScheduledTaskTrigger -AtStartup
-    # $User= "NT AUTHORITYSYSTEM" -User $User
-    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "C:\work\autoupdate.ps1""
-    # $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Settings $settings
-    Register-ScheduledTask -TaskName "autoupdater" -Trigger $trigger -Action $action -RunLevel Highest -Force
+    # # Creacion bucle (no funciona en el Pre-Enviroment)
+    # $Trigger= New-ScheduledTaskTrigger -AtLogon
+    # $Action= New-ScheduledTaskAction -Execute "C:\work\start.bat"
+    # Register-ScheduledTask -TaskName "StartupScript1" -Trigger $Trigger -Action $Action -RunLevel Highest
 
     # Atualizar
     Get-WindowsUpdate -AcceptAll -Install -Verbose -AutoReboot
     $updates | ForEach-Object {
         $_ | Install-WindowsUpdate -AcceptAll -Install -Verbose ;
+ 
+        # Obter lista dos drivers nao-instalados
+    $devices = Get-PnpDevice | Where-Object { $_.NoDriver }
+    $outputFile = "\\nas002\TEMP\Drivers.txt"
+    foreach ($device in $devices) {
+        $hardwareIds = $device.HardwareID -join ", "
+        $deviceName = $device.FriendlyName
+    
+        # Escribir el nombre del dispositivo y su ID de hardware en el archivo
+        "$deviceName`n$hardwareIds`n" | Out-File -Append -FilePath $outputFile
+        Write-Host "Os drivers que nao se posso instalar fican nun arquivo no C:\work\Drivers.txt"
+    }
+
+    Remove-Item -Path "C:\work" -Recurse -Force
     shutdown.exe /r /f /t 0
     }
 
 } else {
     # Nao hay atualizaciones disponibles
-    # Eliminar o lanzador do atualizador
+
+    # Obter lista dos drivers nao-instalados
+    $devices = Get-PnpDevice | Where-Object { $_.NoDriver }
+    $outputFile = "C:\work\Drivers.txt"
+    foreach ($device in $devices) {
+        $hardwareIds = $device.HardwareID -join ", "
+        $deviceName = $device.FriendlyName
     
-    Write-Host "Nao hai mais atualizaçoes. Presione cualquier tecla para continuar..."
-    # Esperar a que el usuario presione una tecla
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        # Escribir el nombre del dispositivo y su ID de hardware en el archivo
+        "$deviceName`n$hardwareIds`n" | Out-File -Append -FilePath $outputFile
+        Write-Host "Os drivers que nao se posso instalar fican nun arquivo no C:\work\Drivers.txt"
+    }
 
-    Unregister-ScheduledTask -TaskName "autoupdater" -Confirm:$false
-
-    shutdown.exe /r /f /t 0
+    Write-Host "Nao hai mais atualizaçoes. Presione cualquier tecla para continuar...";
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown");
 }
 
 shutdown.exe /r /f /t 0
